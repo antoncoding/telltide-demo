@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@reown/appkit": "1.8.13",
     "@reown/appkit-adapter-wagmi": "1.8.13",
@@ -26,7 +26,7 @@
     "tailwindcss-animate": "^1.0.7",
     "viem": "^2.31.3",
     "wagmi": "^2.12.31",
-    "zod": "3.23.8"
+    "zod": "4.1.12"
   },
   "devDependencies": {
     "@types/node": "^22",

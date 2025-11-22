@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --background: 231 33% 6%;
-  --foreground: 210 40% 96%;
-  --muted: 226 25% 20%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 196 100% 50%;
+  --background: 221 33% 7%;
+  --foreground: 210 40% 92%;
+  --muted: 220 18% 18%;
+  --muted-foreground: 215 16% 70%;
+  --accent: 197 97% 51%;
   --accent-foreground: 222 47% 11%;
-  --card: 222 47% 11%;
-  --card-foreground: 210 40% 96%;
-  --border: 220 15% 25%;
+  --card: 220 30% 10%;
+  --card-foreground: 210 40% 92%;
+  --border: 220 14% 20%;
 }
 
 @layer base {
@@ -21,15 +21,14 @@
 
   body {
     @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))] min-h-screen antialiased font-sans;
-    background-image: radial-gradient(circle at 20% 20%, rgba(14, 165, 233, 0.15), transparent 55%),
-      radial-gradient(circle at 80% 0%, rgba(147, 197, 253, 0.15), transparent 45%),
-      radial-gradient(circle at 50% 50%, rgba(79, 70, 229, 0.25), transparent 60%);
-    background-attachment: fixed;
+    background-image: radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.08), transparent 50%),
+      radial-gradient(circle at 80% 0%, rgba(79, 70, 229, 0.08), transparent 45%);
+    background-size: 800px 800px;
   }
 }
 
 @layer utilities {
   .glass-panel {
-    @apply border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl shadow-slate-900/40;
+    @apply border border-white/10 bg-slate-900/60 backdrop-blur-xl shadow-lg shadow-slate-950/40;
   }
 }

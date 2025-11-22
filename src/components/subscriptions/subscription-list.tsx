@@ -19,6 +19,8 @@ interface Subscription {
     aggregation?: string;
     field?: string;
     condition?: { operator: string; value: number };
+    chain?: string;
+    lookback_blocks?: number;
   } & Record<string, unknown>;
 }
 
@@ -38,10 +40,10 @@ export function SubscriptionList() {
   });
 
   return (
-    <Card className="h-full space-y-4 p-6">
+    <Card className="h-full space-y-4 border border-white/10 p-5">
       <div>
-        <h3 className="text-xl font-semibold">Existing subscriptions</h3>
-        <p className="text-sm text-white/60">Live data from Tell Tide API.</p>
+        <h3 className="text-lg font-semibold">Recent subscriptions</h3>
+        <p className="text-xs text-white/60">Pulled directly from the Tell Tide API.</p>
       </div>
       {isLoading && <p className="text-sm text-white/60">Loading subscriptions...</p>}
       {error && (
@@ -50,29 +52,33 @@ export function SubscriptionList() {
         </p>
       )}
       <div className="space-y-3">
-        {data?.slice(0, 5).map(sub => (
-          <motion.div key={sub.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold">{sub.name}</p>
-                <Badge>{sub.meta_event_config.type}</Badge>
+        {data?.slice(0, 5).map(sub => {
+          const config = sub.meta_event_config;
+          return (
+            <motion.div key={sub.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{sub.name}</p>
+                    <p className="text-xs text-white/50">{config.event_type} · {config.chain ?? 'ethereum'}</p>
+                  </div>
+                  <Badge className="text-[11px] capitalize">{config.type}</Badge>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-white/65">
+                  {config.window && <span>Window: {config.window}</span>}
+                  {config.lookback_blocks && <span>Blocks: {config.lookback_blocks}</span>}
+                  {config.aggregation && <span>Aggregation: {config.aggregation}</span>}
+                  {config.field && <span>Field: {config.field}</span>}
+                  {config.condition && (
+                    <span>
+                      Condition: {config.condition.operator} {config.condition.value}
+                    </span>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-white/50">{sub.meta_event_config.event_type}</p>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-white/60">
-                {sub.meta_event_config.window && <span>Window: {sub.meta_event_config.window}</span>}
-                {sub.meta_event_config.aggregation && (
-                  <span>Aggregation: {sub.meta_event_config.aggregation}</span>
-                )}
-                {sub.meta_event_config.field && <span>Field: {sub.meta_event_config.field}</span>}
-                {sub.meta_event_config.condition && (
-                  <span>
-                    Condition: {sub.meta_event_config.condition.operator} {sub.meta_event_config.condition.value}
-                  </span>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
         {!isLoading && !error && (data?.length ?? 0) === 0 && (
           <p className="text-sm text-white/60">No subscriptions yet. Create your first above.</p>
         )}
