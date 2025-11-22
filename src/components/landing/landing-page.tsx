@@ -11,9 +11,9 @@ import { ReownConnectButton } from "@/components/landing/reown-connect-button";
 
 const features = [
   {
-    title: "Meta-event detection",
+    title: "DeFi safety monitoring",
     description:
-      "Watch ERC20 transfers and ERC4626 vault flows roll into high-signal triggers instead of raw tx noise.",
+      "Track Morpho markets, ERC4626 vaults, and ERC20 flows with indexed meta-events that understand volume, percentages, and net flows—not just raw event logs.",
     icon: Shield
   },
   {
@@ -32,19 +32,19 @@ const features = [
 
 const metaEventExamples = [
   {
-    label: "Vault bleed",
-    detail: "Sum of ERC4626 withdrawals crosses 1M assets inside 120 minutes",
-    window: "2h"
-  },
-  {
-    label: "Base deposit burst",
-    detail: "Rolling count of Base vault deposits exceeds 5 events over 300 blocks",
-    window: "lookback"
-  },
-  {
-    label: "Shrinking deposits",
-    detail: "Average deposit size falls below 10k assets in 60 minutes",
+    label: "Morpho net withdrawal",
+    detail: "Net supply (supply - withdraw) drops below -1M USDC in a market over 1 hour",
     window: "1h"
+  },
+  {
+    label: "Vault volume spike",
+    detail: "Total deposit volume exceeds 5M assets in 30 minutes—catch whale activity early",
+    window: "30m"
+  },
+  {
+    label: "Borrow rate surge",
+    detail: "Net borrows (borrow - repay) exceed 500K USDC across Morpho markets in 15 minutes",
+    window: "15m"
   }
 ];
 
@@ -71,11 +71,12 @@ function Hero() {
       >
         <Badge className="mb-4">Tell Tide</Badge>
         <h1 className="text-balance text-3xl font-semibold leading-tight text-white sm:text-4xl">
-          Stay early. Stay safe in the dark forest.
+          DeFi safety through intelligent monitoring
         </h1>
         <p className="mt-4 max-w-2xl text-base text-white/70">
-          We already know that single events are noise. Tell Tide encodes rolling conditions—counts,
-          averages, sums—so you can react to state changes, not isolated transfers.
+          Watch Morpho markets, ERC4626 vaults, and ERC20 transfers roll into high-signal triggers
+          instead of raw event noise. Meta-events give you indexed data—rolling averages, net flows,
+          volume changes—so you react to what matters.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Button asChild className="group">
@@ -96,25 +97,25 @@ function WhyMetaEvents() {
     <section className="grid gap-8 rounded-2xl border border-white/10 bg-slate-950/60 p-8 md:grid-cols-2">
       <div>
         <p className="text-sm uppercase tracking-wide text-sky-300">Why meta-events</p>
-        <h2 className="mt-2 text-2xl font-semibold text-white">Raw tx feeds miss the story.</h2>
+        <h2 className="mt-2 text-2xl font-semibold text-white">Raw events miss the context.</h2>
         <p className="mt-3 text-sm text-white/70">
-          Tell Tide watches Ethereum and Base, aggregates vault deposits, withdrawals, and token
-          transfers, then ships a webhook only when your predicate is true. You choose the chain,
-          timeframe, aggregation, and cooldown so your team only sees actionable signals.
+          Tell Tide watches Ethereum and Base, indexing Morpho markets, vault flows, and token transfers
+          into context-aware meta-events. Track net supply changes, volume percentages, and rolling
+          averages—not just isolated transactions. Your webhook fires only when conditions are met.
         </p>
       </div>
       <div className="space-y-3 text-sm text-white/75">
         <div className="rounded-lg border border-white/10 bg-slate-900/60 p-4">
+          <p className="font-medium">Indexed data</p>
+          <p className="mt-1 text-white/60">Meta-events aggregate raw logs into volume, net flow, and percentage changes.</p>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-slate-900/60 p-4">
           <p className="font-medium">Stateful triggers</p>
-          <p className="mt-1 text-white/60">Define rolling windows or block lookbacks per chain.</p>
+          <p className="mt-1 text-white/60">Define rolling windows or block lookbacks per chain with cooldown protection.</p>
         </div>
         <div className="rounded-lg border border-white/10 bg-slate-900/60 p-4">
-          <p className="font-medium">Webhook ready</p>
-          <p className="mt-1 text-white/60">Cooldowns and retries are handled for you.</p>
-        </div>
-        <div className="rounded-lg border border-white/10 bg-slate-900/60 p-4">
-          <p className="font-medium">Demo friendly</p>
-          <p className="mt-1 text-white/60">Use the built-in callback stream to prove the alert on stage.</p>
+          <p className="font-medium">Morpho-native</p>
+          <p className="mt-1 text-white/60">Monitor supply, borrow, withdraw, and repay events across all Morpho markets.</p>
         </div>
       </div>
     </section>

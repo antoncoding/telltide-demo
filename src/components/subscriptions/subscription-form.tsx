@@ -27,18 +27,45 @@ const schema = z
     name: z.string().min(4, "Give the alert a name"),
     webhookUrl: z.string().url("Webhook must be a valid URL").default(DEMO_CALLBACK_URL),
     chain: z.enum(["ethereum", "base"]),
-    type: z.enum(["rolling_aggregate", "event_count"]),
-    eventType: z.enum(["erc4626_deposit", "erc4626_withdraw"]),
+    type: z.enum(["rolling_aggregate", "event_count", "net_aggregate"]),
+    eventType: z.enum([
+      "erc20_transfer",
+      "erc4626_deposit",
+      "erc4626_withdraw",
+      "morpho_supply",
+      "morpho_withdraw",
+      "morpho_borrow",
+      "morpho_repay"
+    ]),
+    positiveEventType: z.enum([
+      "erc20_transfer",
+      "erc4626_deposit",
+      "erc4626_withdraw",
+      "morpho_supply",
+      "morpho_withdraw",
+      "morpho_borrow",
+      "morpho_repay"
+    ]).optional(),
+    negativeEventType: z.enum([
+      "erc20_transfer",
+      "erc4626_deposit",
+      "erc4626_withdraw",
+      "morpho_supply",
+      "morpho_withdraw",
+      "morpho_borrow",
+      "morpho_repay"
+    ]).optional(),
     window: z.string().min(2),
     aggregation: z.enum(["sum", "avg", "min", "max"]).optional(),
-    field: z.enum(["assets", "shares" ]).optional(),
-    threshold: z.coerce.number().positive("Threshold must be positive"),
+    field: z.enum(["assets", "shares", "value"]).optional(),
+    threshold: z.coerce.number(),
     contracts: z.string().optional(),
+    marketId: z.string().optional(),
     cooldownMinutes: z.coerce.number().min(1).max(60).default(1),
     lookbackBlocks: z.coerce.number().positive().optional()
   })
   .superRefine((value, ctx) => {
-    if (value.type === "rolling_aggregate") {
+    if (value.type === "rolling_aggregate" || value.type === "net_aggregate") {
       if (!value.aggregation) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -51,6 +78,22 @@ const schema = z
           code: z.ZodIssueCode.custom,
           message: "Field is required",
           path: ["field"]
+        });
+      }
+    }
+    if (value.type === "net_aggregate") {
+      if (!value.positiveEventType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Positive event type is required for net aggregate",
+          path: ["positiveEventType"]
+        });
+      }
+      if (!value.negativeEventType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Negative event type is required for net aggregate",
+          path: ["negativeEventType"]
         });
       }
     }
@@ -79,20 +122,23 @@ export function SubscriptionForm({ onCreated }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       userId: "",
-      name: "High Vault Withdrawal Alert",
+      name: "Morpho Market Net Withdrawal Alert",
       webhookUrl: DEMO_CALLBACK_URL,
       chain: "ethereum",
-      type: "rolling_aggregate",
-      eventType: "erc4626_withdraw",
-      window: "2h",
+      type: "net_aggregate",
+      eventType: "morpho_supply",
+      positiveEventType: "morpho_supply",
+      negativeEventType: "morpho_withdraw",
+      window: "1h",
       aggregation: "sum",
       field: "assets",
-      threshold: 1000000000000,
+      threshold: -1000000000000,
       cooldownMinutes: 5
     }
   });
 
   const type = watch("type");
+  const eventType = watch("eventType");
 
   useEffect(() => {
     if (address) {
@@ -115,15 +161,29 @@ export function SubscriptionForm({ onCreated }: Props) {
         event_type: values.eventType,
         window: values.window,
         condition: {
-          operator: ">",
+          operator: values.threshold >= 0 ? ">" : "<",
           value: values.threshold
         }
       };
 
       if (values.lookbackBlocks) metaConfig.lookback_blocks = values.lookbackBlocks;
-      if (contracts && contracts.length === 1) metaConfig.contract_address = contracts[0];
-      if (contracts && contracts.length > 1) metaConfig.contracts = contracts;
+      if (values.marketId) metaConfig.market_id = values.marketId;
+
+      // Only add contract address for non-Morpho events
+      const isMorphoEvent = values.eventType?.startsWith("morpho_");
+      if (!isMorphoEvent) {
+        if (contracts && contracts.length === 1) metaConfig.contract_address = contracts[0];
+        if (contracts && contracts.length > 1) metaConfig.contracts = contracts;
+      }
+
       if (values.type === "rolling_aggregate") {
+        metaConfig.aggregation = values.aggregation;
+        metaConfig.field = values.field;
+      }
+
+      if (values.type === "net_aggregate") {
+        metaConfig.positive_event_type = values.positiveEventType;
+        metaConfig.negative_event_type = values.negativeEventType;
         metaConfig.aggregation = values.aggregation;
         metaConfig.field = values.field;
       }
@@ -210,6 +270,7 @@ export function SubscriptionForm({ onCreated }: Props) {
                 <SelectContent>
                   <SelectItem value="rolling_aggregate">Rolling aggregate</SelectItem>
                   <SelectItem value="event_count">Event count</SelectItem>
+                  <SelectItem value="net_aggregate">Net aggregate</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -228,6 +289,10 @@ export function SubscriptionForm({ onCreated }: Props) {
                   <SelectItem value="erc20_transfer">ERC20 transfer</SelectItem>
                   <SelectItem value="erc4626_deposit">ERC4626 deposit</SelectItem>
                   <SelectItem value="erc4626_withdraw">ERC4626 withdraw</SelectItem>
+                  <SelectItem value="morpho_supply">Morpho supply</SelectItem>
+                  <SelectItem value="morpho_withdraw">Morpho withdraw</SelectItem>
+                  <SelectItem value="morpho_borrow">Morpho borrow</SelectItem>
+                  <SelectItem value="morpho_repay">Morpho repay</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -235,7 +300,50 @@ export function SubscriptionForm({ onCreated }: Props) {
         </Field>
       </div>
 
-      {type === "rolling_aggregate" && (
+      {type === "net_aggregate" && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Positive event (inflow)" error={errors.positiveEventType?.message}>
+            <Controller
+              control={control}
+              name="positiveEventType"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="erc20_transfer">ERC20 transfer</SelectItem>
+                    <SelectItem value="erc4626_deposit">ERC4626 deposit</SelectItem>
+                    <SelectItem value="morpho_supply">Morpho supply</SelectItem>
+                    <SelectItem value="morpho_borrow">Morpho borrow</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>
+          <Field label="Negative event (outflow)" error={errors.negativeEventType?.message}>
+            <Controller
+              control={control}
+              name="negativeEventType"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="erc20_transfer">ERC20 transfer</SelectItem>
+                    <SelectItem value="erc4626_withdraw">ERC4626 withdraw</SelectItem>
+                    <SelectItem value="morpho_withdraw">Morpho withdraw</SelectItem>
+                    <SelectItem value="morpho_repay">Morpho repay</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>
+        </div>
+      )}
+
+      {(type === "rolling_aggregate" || type === "net_aggregate") && (
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Aggregation" error={errors.aggregation?.message}>
             <Controller
@@ -286,9 +394,17 @@ export function SubscriptionForm({ onCreated }: Props) {
         </Field>
       </div>
 
-      <Field label="Contracts" helper="Single address or newline separated list">
-        <Textarea placeholder={"0xVault... or multiple addresses"} {...register("contracts")} />
-      </Field>
+      {eventType?.startsWith("morpho_") && (
+        <Field label="Market ID" helper="Optional: Filter by specific Morpho market" error={errors.marketId?.message}>
+          <Input placeholder="0x58e212060645d18eab6d9b2af3d56fbc906a92ff..." {...register("marketId")} />
+        </Field>
+      )}
+
+      {!eventType?.startsWith("morpho_") && (
+        <Field label="Contracts" helper="Single address or newline separated list">
+          <Textarea placeholder={"0xVault... or multiple addresses"} {...register("contracts")} />
+        </Field>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Cooldown (minutes)" error={errors.cooldownMinutes?.message}>
