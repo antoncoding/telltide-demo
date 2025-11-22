@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -109,6 +109,7 @@ export function SubscriptionForm({ onCreated }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { address } = useAppKitAccount();
+  const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     handleSubmit,
@@ -146,9 +147,23 @@ export function SubscriptionForm({ onCreated }: Props) {
     }
   }, [address, setValue]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const onSubmit = handleSubmit(async values => {
     setIsSubmitting(true);
     setStatus(null);
+    // Clear any existing error timeout when starting a new submission
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = null;
+    }
     try {
       const contracts = values.contracts
         ?.split(/\n|,/) // split newline or comma
@@ -207,11 +222,18 @@ export function SubscriptionForm({ onCreated }: Props) {
         throw new Error(message || "Failed to create subscription");
       }
 
-      setStatus("Subscription created successfully.");
+      setStatus("✓ Subscription created successfully.");
       reset();
       onCreated?.();
     } catch (error) {
-      setStatus((error as Error).message);
+      const errorMessage = `✗ Failed: ${(error as Error).message}`;
+      setStatus(errorMessage);
+      // Clear any existing timeout
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+      // Auto-clear error message after 5 seconds
+      errorTimeoutRef.current = setTimeout(() => setStatus(null), 5000);
     } finally {
       setIsSubmitting(false);
     }
@@ -416,7 +438,13 @@ export function SubscriptionForm({ onCreated }: Props) {
       </div>
 
       {status && (
-        <p className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80">
+        <p
+          className={`rounded-lg border px-4 py-2 text-sm ${
+            status.startsWith("✓")
+              ? "border-green-500/30 bg-green-500/10 text-green-300"
+              : "border-red-500/30 bg-red-500/10 text-red-300"
+          }`}
+        >
           {status}
         </p>
       )}

@@ -10,7 +10,10 @@ const font = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk
 export const metadata: Metadata = {
   title: "Tell Tide | Meta-event subscriptions",
   description:
-    "Tell Tide lets you monitor Morpho markets, ERC4626 vaults, and ERC20 flows with intelligent meta-event detection."
+    "Tell Tide lets you monitor Morpho markets, ERC4626 vaults, and ERC20 flows with intelligent meta-event detection.",
+  icons: {
+    icon: "/favicon.ico"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -2,33 +2,12 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, BellRing, Shield, Zap } from "lucide-react";
+import { ArrowRight, Clock, Gauge, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ReownConnectButton } from "@/components/landing/reown-connect-button";
-
-const features = [
-  {
-    title: "DeFi safety monitoring",
-    description:
-      "Track Morpho markets, ERC4626 vaults, and ERC20 flows with indexed meta-events that understand volume, percentages, and net flows—not just raw event logs.",
-    icon: Shield
-  },
-  {
-    title: "Programmable webhooks",
-    description:
-      "Point alerts at any HTTPS endpoint and get retries plus a built-in demo callback route.",
-    icon: BellRing
-  },
-  {
-    title: "One-click start",
-    description:
-      "Connect a wallet, shape a condition, and ship your first subscription without touching backend code.",
-    icon: Zap
-  }
-];
 
 const metaEventExamples = [
   {
@@ -53,7 +32,6 @@ export function LandingPage() {
     <div className="space-y-20 pb-20">
       <Hero />
       <WhyMetaEvents />
-      <FeatureGrid />
       <ExampleMetaEvents />
       <CallToAction />
     </div>
@@ -106,42 +84,39 @@ function WhyMetaEvents() {
       </div>
       <div className="space-y-3 text-sm text-white/75">
         <div className="rounded-lg border border-white/10 bg-slate-900/60 p-4">
-          <p className="font-medium">Indexed data</p>
-          <p className="mt-1 text-white/60">Meta-events aggregate raw logs into volume, net flow, and percentage changes.</p>
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-300">
+              <Clock className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="font-medium text-white">Stateful triggers</p>
+              <p className="mt-1 text-white/60">Define rolling windows or block lookbacks per chain with cooldown protection.</p>
+            </div>
+          </div>
         </div>
         <div className="rounded-lg border border-white/10 bg-slate-900/60 p-4">
-          <p className="font-medium">Stateful triggers</p>
-          <p className="mt-1 text-white/60">Define rolling windows or block lookbacks per chain with cooldown protection.</p>
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-300">
+              <Gauge className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="font-medium text-white">Streaming fast</p>
+              <p className="mt-1 text-white/60">Real-time indexed data with webhook retries and built-in callback demo stream.</p>
+            </div>
+          </div>
         </div>
         <div className="rounded-lg border border-white/10 bg-slate-900/60 p-4">
-          <p className="font-medium">Morpho-native</p>
-          <p className="mt-1 text-white/60">Monitor supply, borrow, withdraw, and repay events across all Morpho markets.</p>
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-300">
+              <Settings className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="font-medium text-white">Customizable</p>
+              <p className="mt-1 text-white/60">Choose chains, contracts, aggregations, thresholds, and time windows—all from one form.</p>
+            </div>
+          </div>
         </div>
       </div>
-    </section>
-  );
-}
-
-function FeatureGrid() {
-  return (
-    <section className="grid gap-4 lg:grid-cols-3">
-      {features.map(({ title, description, icon: Icon }) => (
-        <motion.div
-          key={title}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4 }}
-        >
-          <Card className="h-full border border-white/10 p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-500/10 text-sky-300">
-              <Icon className="h-5 w-5" />
-            </div>
-            <h3 className="mt-3 text-lg font-semibold text-white">{title}</h3>
-            <p className="mt-2 text-sm text-white/65">{description}</p>
-          </Card>
-        </motion.div>
-      ))}
     </section>
   );
 }
@@ -150,9 +125,9 @@ function ExampleMetaEvents() {
   return (
     <section className="space-y-4">
       <div className="flex flex-col gap-1">
-        <p className="text-sm uppercase tracking-wide text-sky-300">Reference patterns</p>
-        <h2 className="text-xl font-semibold text-white">What a Tell Tide meta-event looks like</h2>
-        <p className="text-sm text-white/65">Drag these into the builder or adapt them to your contracts.</p>
+        <p className="text-sm uppercase tracking-wide text-sky-300">DeFi-native monitoring</p>
+        <h2 className="text-xl font-semibold text-white">Watch Morpho markets and vault flows in real-time</h2>
+        <p className="text-sm text-white/65">Monitor supply, borrow, withdraw, and repay events across all Morpho markets, plus ERC4626 vaults and ERC20 transfers.</p>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         {metaEventExamples.map(card => (
