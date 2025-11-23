@@ -5,8 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { useAppKitAccount } from "@reown/appkit/react";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +21,7 @@ import { zodResolver } from "@/lib/zod-resolver";
 
 const schema = z
   .object({
-    userId: z.string().min(4, "Connect a wallet or provide an address"),
+    userId: z.string().min(1, "User ID is required"),
     name: z.string().min(4, "Give the alert a name"),
     webhookUrl: z.string().url("Webhook must be a valid URL").default(DEMO_CALLBACK_URL),
     chain: z.enum(["ethereum", "base"]),
@@ -61,7 +59,7 @@ const schema = z
     threshold: z.coerce.number(),
     contracts: z.string().optional(),
     marketId: z.string().optional(),
-    cooldownMinutes: z.coerce.number().min(1).max(60).default(1),
+    cooldownMinutes: z.coerce.number().min(0).max(60).default(1),
     lookbackBlocks: z.coerce.number().positive().optional()
   })
   .superRefine((value, ctx) => {
@@ -108,7 +106,6 @@ interface Props {
 export function SubscriptionForm({ onCreated }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { address } = useAppKitAccount();
   const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
@@ -122,10 +119,10 @@ export function SubscriptionForm({ onCreated }: Props) {
   } = useForm<SubscriptionPayload>({
     resolver: zodResolver(schema),
     defaultValues: {
-      userId: "",
+      userId: "demo",
       name: "Morpho Market Net Withdrawal Alert",
       webhookUrl: DEMO_CALLBACK_URL,
-      chain: "ethereum",
+      chain: "base",
       type: "net_aggregate",
       eventType: "morpho_supply",
       positiveEventType: "morpho_supply",
@@ -134,18 +131,13 @@ export function SubscriptionForm({ onCreated }: Props) {
       aggregation: "sum",
       field: "assets",
       threshold: -1000000000000,
-      cooldownMinutes: 5
+      cooldownMinutes: 1,
+      lookbackBlocks: 10
     }
   });
 
   const type = watch("type");
   const eventType = watch("eventType");
-
-  useEffect(() => {
-    if (address) {
-      setValue("userId", address);
-    }
-  }, [address, setValue]);
 
   // Auto-fill form based on event type for demo purposes
   useEffect(() => {
@@ -271,11 +263,10 @@ export function SubscriptionForm({ onCreated }: Props) {
         <p className="text-sm text-white/60">Tell Tide will hit your webhook when this state change occurs.</p>
       </div>
 
-      <Field label="User wallet" error={errors.userId?.message}>
+      <Field label="User ID" error={errors.userId?.message}>
         <Input
-          placeholder="0x..."
+          placeholder="demo"
           {...register("userId")}
-          readOnly={Boolean(address)}
         />
       </Field>
 
@@ -455,7 +446,7 @@ export function SubscriptionForm({ onCreated }: Props) {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Cooldown (minutes)" error={errors.cooldownMinutes?.message}>
-          <Input type="number" min={1} max={60} {...register("cooldownMinutes", { valueAsNumber: true })} />
+          <Input type="number" min={0} max={60} {...register("cooldownMinutes", { valueAsNumber: true })} />
         </Field>
         <Field label="Lookback blocks" helper="Optional" error={errors.lookbackBlocks?.message}>
           <Input type="number" min={1} {...register("lookbackBlocks", { valueAsNumber: true })} />

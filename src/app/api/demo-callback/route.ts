@@ -6,10 +6,18 @@ import {
 } from "@/lib/demo-callback-store";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
+  console.log("🔔 [SERVER] Webhook POST received");
+
+  const body = await request.json().catch((error) => {
+    console.error("❌ [SERVER] Failed to parse webhook body:", error);
+    return null;
+  });
+
+  console.log("📦 [SERVER] Webhook payload:", JSON.stringify(body).slice(0, 200));
+
   const record = addNotification(body);
 
-  console.info("Demo callback received", record);
+  console.log("✅ [SERVER] Webhook processed, notification ID:", record.id);
 
   return NextResponse.json({ ok: true });
 }

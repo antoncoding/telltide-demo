@@ -82,56 +82,107 @@ function getEventColorScheme(payload: unknown): EventColorScheme {
 export function DemoCallbackViewer() {
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [status, setStatus] = useState<string>("Connecting to webhook stream...");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
+    const connectionId = crypto.randomUUID().slice(0, 8);
+    console.log(`🔌 [${connectionId}] Setting up EventSource connection`);
     const eventSource = new EventSource("/api/demo-callback/stream");
 
     const handleSeed = (event: MessageEvent<string>) => {
+      console.log(`🌱 [${connectionId}] Seed event received`);
       try {
         const parsed = JSON.parse(event.data) as {
           notifications?: NotificationRecord[];
         };
-        if (parsed.notifications) {
-          setNotifications(parsed.notifications);
-        }
+        console.log(`📥 [${connectionId}] Seed contains`, parsed.notifications?.length ?? 0, "notifications (ignoring old notifications)");
+        // Don't load old notifications, only show new ones
+        setNotifications([]);
         setStatus("Listening for notifications...");
       } catch (error) {
-        console.error("Unable to parse seed payload", error);
+        console.error(`❌ [${connectionId}] Unable to parse seed payload`, event.data, error);
       }
     };
 
     const handleNotification = (event: MessageEvent<string>) => {
+      console.log(`🔔 [${connectionId}] Notification event received:`, event.data);
       try {
         const record = JSON.parse(event.data) as NotificationRecord;
-        setNotifications(prev => [record, ...prev].slice(0, 50));
+        console.log(`✅ [${connectionId}] Parsed notification with ID:`, record.id);
+        setNotifications(prev => {
+          // Check if we already have this notification ID (shouldn't happen but let's verify)
+          const exists = prev.some(n => n.id === record.id);
+          if (exists) {
+            console.warn(`⚠️ [${connectionId}] Duplicate notification ID detected:`, record.id);
+            return prev; // Don't add duplicates
+          }
+          const updated = [record, ...prev].slice(0, 50);
+          console.log(`📊 [${connectionId}] Total notifications after update:`, updated.length);
+          return updated;
+        });
         setStatus("New webhook received");
       } catch (error) {
-        console.error("Unable to parse notification payload", error);
+        console.error(`❌ [${connectionId}] Unable to parse notification payload`, event.data, error);
       }
+    };
+
+    const handlePing = (event: MessageEvent<string>) => {
+      console.log(`💓 [${connectionId}] Heartbeat ping received`);
     };
 
     eventSource.addEventListener("seed", handleSeed);
     eventSource.addEventListener("notification", handleNotification);
-    eventSource.onopen = () => setStatus("Listening for notifications...");
-    eventSource.onerror = () => setStatus("Connection lost · retrying...");
+    eventSource.addEventListener("ping", handlePing);
+    eventSource.onopen = () => {
+      console.log(`✅ [${connectionId}] EventSource connection opened, readyState:`, eventSource.readyState);
+      setStatus("Listening for notifications...");
+    };
+    eventSource.onerror = (error) => {
+      console.error(`❌ [${connectionId}] EventSource error, readyState:`, eventSource.readyState, error);
+      setStatus("Connection lost · retrying...");
+    };
 
     return () => {
+      console.log(`🔌 [${connectionId}] Cleaning up EventSource connection`);
       eventSource.removeEventListener("seed", handleSeed);
       eventSource.removeEventListener("notification", handleNotification);
+      eventSource.removeEventListener("ping", handlePing);
       eventSource.close();
+      console.log(`🔌 [${connectionId}] EventSource closed`);
     };
   }, []);
+
+  // Log notifications count when it changes
+  useEffect(() => {
+    console.log("🎨 Rendering", notifications.length, "notifications");
+    console.log("📋 Notification IDs:", notifications.map(n => n.id));
+  }, [notifications]);
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-white/60">{status}</p>
       <div className="space-y-3">
-        {notifications.map(notification => {
+        {notifications.map((notification, index) => {
           const colorScheme = getEventColorScheme(notification.payload);
+          const isExpanded = expandedIds.has(notification.id);
+          const payloadStr = notification.payload ? JSON.stringify(notification.payload, null, 2) : "null";
 
           return (
             <motion.div
               key={notification.id}
+              layoutId={notification.id}
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{
@@ -141,15 +192,37 @@ export function DemoCallbackViewer() {
               }}
               className={`rounded-2xl border ${colorScheme.border} ${colorScheme.bg} p-4 shadow-lg`}
             >
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-xs mb-2">
                 <span className="font-semibold text-white/80">{colorScheme.label}</span>
-                <time dateTime={notification.receivedAt} className="text-white/60">
-                  {new Date(notification.receivedAt).toLocaleTimeString()}
-                </time>
+                <div className="flex items-center gap-2">
+                  <time dateTime={notification.receivedAt} className="text-white/60">
+                    {new Date(notification.receivedAt).toLocaleTimeString()}
+                  </time>
+                  <button
+                    onClick={() => toggleExpanded(notification.id)}
+                    className="text-white/60 hover:text-white/90 transition-colors px-2 py-1 rounded hover:bg-white/5"
+                    aria-label={isExpanded ? "Collapse" : "Expand"}
+                  >
+                    {isExpanded ? "▼" : "▶"}
+                  </button>
+                </div>
               </div>
-              <pre className={`mt-2 overflow-auto text-sm ${colorScheme.text}`}>
-                {notification.payload ? JSON.stringify(notification.payload, null, 2) : "null"}
+              <pre
+                className={`overflow-auto text-sm ${colorScheme.text} transition-all duration-200 ${
+                  isExpanded ? "max-h-[600px]" : "max-h-[120px]"
+                }`}
+                style={{
+                  wordBreak: "break-word",
+                  whiteSpace: "pre-wrap"
+                }}
+              >
+                {payloadStr}
               </pre>
+              {!isExpanded && payloadStr.split('\n').length > 6 && (
+                <div className={`text-xs ${colorScheme.text} opacity-50 mt-1`}>
+                  Click ▶ to expand full payload
+                </div>
+              )}
             </motion.div>
           );
         })}
