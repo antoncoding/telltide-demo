@@ -147,6 +147,31 @@ export function SubscriptionForm({ onCreated }: Props) {
     }
   }, [address, setValue]);
 
+  // Auto-fill form based on event type for demo purposes
+  useEffect(() => {
+    if (eventType === "erc20_transfer") {
+      // ERC20 Transfer demo scenario
+      setValue("name", "ERC20 Transfer Alert");
+      setValue("type", "event_count");
+      setValue("threshold", 10);
+      setValue("window", "2m");
+      setValue("contracts", "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+      setValue("aggregation", undefined);
+      setValue("field", undefined);
+    } else if (eventType?.startsWith("morpho_")) {
+      // Morpho aggregate demo scenario
+      setValue("name", "Morpho Market Net Withdrawal Alert");
+      setValue("type", "net_aggregate");
+      setValue("positiveEventType", "morpho_supply");
+      setValue("negativeEventType", "morpho_withdraw");
+      setValue("window", "1h");
+      setValue("aggregation", "sum");
+      setValue("field", "assets");
+      setValue("threshold", -1000000000000);
+      setValue("contracts", "");
+    }
+  }, [eventType, setValue]);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -418,7 +443,7 @@ export function SubscriptionForm({ onCreated }: Props) {
 
       {eventType?.startsWith("morpho_") && (
         <Field label="Market ID" helper="Optional: Filter by specific Morpho market" error={errors.marketId?.message}>
-          <Input placeholder="0x58e212060645d18eab6d9b2af3d56fbc906a92ff..." {...register("marketId")} />
+          <Input placeholder="0x9103c3b4e834476c9a62ea009ba2c884ee42e94e6e314a26f04d312434191836" {...register("marketId")} />
         </Field>
       )}
 

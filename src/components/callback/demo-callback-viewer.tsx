@@ -9,118 +9,74 @@ type EventColorScheme = {
   border: string;
   bg: string;
   text: string;
+  label: string;
 };
+
+// Simple hash function to generate a consistent number from a string
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
+}
+
+// Color palette for subscriptions
+const colorPalette = [
+  { border: "border-emerald-500/30", bg: "bg-emerald-500/10", text: "text-emerald-100" },
+  { border: "border-blue-500/30", bg: "bg-blue-500/10", text: "text-blue-100" },
+  { border: "border-purple-500/30", bg: "bg-purple-500/10", text: "text-purple-100" },
+  { border: "border-rose-500/30", bg: "bg-rose-500/10", text: "text-rose-100" },
+  { border: "border-amber-500/30", bg: "bg-amber-500/10", text: "text-amber-100" },
+  { border: "border-cyan-500/30", bg: "bg-cyan-500/10", text: "text-cyan-100" },
+  { border: "border-violet-500/30", bg: "bg-violet-500/10", text: "text-violet-100" },
+  { border: "border-pink-500/30", bg: "bg-pink-500/10", text: "text-pink-100" },
+  { border: "border-orange-500/30", bg: "bg-orange-500/10", text: "text-orange-100" },
+  { border: "border-teal-500/30", bg: "bg-teal-500/10", text: "text-teal-100" },
+];
 
 function getEventColorScheme(payload: unknown): EventColorScheme {
   // Default color scheme
   const defaultScheme: EventColorScheme = {
     border: "border-slate-500/30",
     bg: "bg-slate-500/10",
-    text: "text-slate-100"
+    text: "text-slate-100",
+    label: "Unknown"
   };
 
-  if (!payload || typeof payload !== "object") return defaultScheme;
+  // Log the full payload for debugging
+  console.log("📦 Webhook payload:", payload);
 
-  const payloadObj = payload as Record<string, unknown>;
+  if (!payload) {
+    console.log("⚠️ Payload is null or undefined");
+    return { ...defaultScheme, label: "Empty Payload" };
+  }
 
-  // Debug: log the payload structure
-  console.log("Webhook payload structure:", payloadObj);
-  console.log("Payload keys:", Object.keys(payloadObj));
-
-  const metaEventConfig = payloadObj.meta_event_config as Record<string, unknown> | undefined;
-
-  if (!metaEventConfig) {
-    console.log("No meta_event_config found in payload");
+  if (typeof payload !== "object") {
+    console.log("⚠️ Payload is not an object:", typeof payload);
     return defaultScheme;
   }
 
-  const eventType = metaEventConfig.event_type as string | undefined;
-  const metaType = metaEventConfig.type as string | undefined;
-
-  console.log("Event type:", eventType, "Meta type:", metaType);
-
-  // Meta-event type colors (primary classification)
-  if (metaType === "rolling_aggregate") {
-    return {
-      border: "border-purple-500/30",
-      bg: "bg-purple-500/10",
-      text: "text-purple-100"
-    };
-  }
-
-  if (metaType === "event_count") {
-    return {
-      border: "border-blue-500/30",
-      bg: "bg-blue-500/10",
-      text: "text-blue-100"
-    };
-  }
-
-  if (metaType === "net_aggregate") {
-    return {
-      border: "border-amber-500/30",
-      bg: "bg-amber-500/10",
-      text: "text-amber-100"
-    };
-  }
-
-  // Fallback to event type if no meta type
-  if (!eventType) return defaultScheme;
-
-  // ERC20 events - Blue/Cyan theme
-  if (eventType === "erc20_transfer") {
-    return {
-      border: "border-cyan-500/30",
-      bg: "bg-cyan-500/10",
-      text: "text-cyan-100"
-    };
-  }
-
-  // ERC4626 events - Purple/Violet theme
-  if (eventType === "erc4626_deposit" || eventType === "erc4626_withdraw") {
-    return {
-      border: "border-violet-500/30",
-      bg: "bg-violet-500/10",
-      text: "text-violet-100"
-    };
-  }
-
-  // Morpho supply/borrow events - Green/Emerald theme (inflows)
-  if (eventType === "morpho_supply" || eventType === "morpho_borrow") {
-    return {
-      border: "border-emerald-500/30",
-      bg: "bg-emerald-500/10",
-      text: "text-emerald-100"
-    };
-  }
-
-  // Morpho withdraw/repay events - Orange/Rose theme (outflows)
-  if (eventType === "morpho_withdraw" || eventType === "morpho_repay") {
-    return {
-      border: "border-rose-500/30",
-      bg: "bg-rose-500/10",
-      text: "text-rose-100"
-    };
-  }
-
-  return defaultScheme;
-}
-
-function getEventLabel(payload: unknown): string {
-  if (!payload || typeof payload !== "object") return "Notification";
-
   const payloadObj = payload as Record<string, unknown>;
-  const metaEventConfig = payloadObj.meta_event_config as Record<string, unknown> | undefined;
+  const subscriptionName = payloadObj.subscription_name as string | undefined;
 
-  if (!metaEventConfig) return "Notification";
+  console.log("🏷️ Subscription name:", subscriptionName);
 
-  const metaType = metaEventConfig.type as string | undefined;
+  // Use subscription_name to determine color
+  if (subscriptionName) {
+    const hash = hashString(subscriptionName);
+    const colorIndex = hash % colorPalette.length;
+    const colors = colorPalette[colorIndex];
 
-  if (metaType === "rolling_aggregate") return "Rolling Aggregate";
-  if (metaType === "event_count") return "Event Count";
-  if (metaType === "net_aggregate") return "Net Aggregate";
+    return {
+      ...colors,
+      label: subscriptionName
+    };
+  }
 
-  return "Notification";
+  return { ...defaultScheme, label: "No Subscription Name" };
 }
 
 export function DemoCallbackViewer() {
@@ -172,23 +128,27 @@ export function DemoCallbackViewer() {
       <div className="space-y-3">
         {notifications.map(notification => {
           const colorScheme = getEventColorScheme(notification.payload);
-          const eventLabel = getEventLabel(notification.payload);
 
           return (
             <motion.div
               key={notification.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`rounded-2xl border ${colorScheme.border} ${colorScheme.bg} p-4`}
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 20
+              }}
+              className={`rounded-2xl border ${colorScheme.border} ${colorScheme.bg} p-4 shadow-lg`}
             >
-              <div className="flex items-center justify-between text-xs text-white/60">
-                <span>{eventLabel}</span>
-                <time dateTime={notification.receivedAt}>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-white/80">{colorScheme.label}</span>
+                <time dateTime={notification.receivedAt} className="text-white/60">
                   {new Date(notification.receivedAt).toLocaleTimeString()}
                 </time>
               </div>
               <pre className={`mt-2 overflow-auto text-sm ${colorScheme.text}`}>
-                {JSON.stringify(notification.payload, null, 2)}
+                {notification.payload ? JSON.stringify(notification.payload, null, 2) : "null"}
               </pre>
             </motion.div>
           );
